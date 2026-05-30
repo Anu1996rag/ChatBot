@@ -3,14 +3,6 @@ from langchain_core.messages import HumanMessage
 from backend import chatbot
 import utils
 
-# ****************************** Sidebar UI ******************************
-st.sidebar.title("Chatbot")
-
-st.sidebar.button("New Chat")
-
-st.sidebar.header("Conversations")
-
-
 # ****************************** Session Setup ******************************
 if "message_history" not in st.session_state:
     st.session_state["message_history"] = []
@@ -18,6 +10,21 @@ if "message_history" not in st.session_state:
 if "thread_id" not in st.session_state:
     st.session_state["thread_id"] = utils.generate_thread_id()
 
+
+def reset_chat():
+    st.session_state["thread_id"] = utils.generate_thread_id()
+    st.session_state["message_history"] = []
+
+
+# ****************************** Sidebar UI ******************************
+st.sidebar.title("Chatbot")
+
+if st.sidebar.button("New Chat"):
+    reset_chat()
+
+st.sidebar.header("Conversations")
+
+st.sidebar.text(st.session_state["thread_id"])
 
 for message in st.session_state["message_history"]:
     with st.chat_message(message["role"]):
