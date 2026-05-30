@@ -3,13 +3,18 @@ from langchain_core.messages import HumanMessage
 from backend import chatbot
 import utils
 
-# ****************************** Sidebar UI ******************************
-st.sidebar.title("Chatbot")
 
-st.sidebar.button("New Chat")
+def reset_chat():
+    st.session_state["thread_id"] = utils.generate_thread_id()
+    add_thread(st.session_state["thread_id"])
+    st.session_state["message_history"] = []
 
-st.sidebar.header("Conversations")
+def add_thread(thread_id):
+    if thread_id not in st.session_state["chat_threads"]:
+        st.session_state["chat_threads"].append(thread_id)
 
+def load_conversation(thread_id):
+    return chatbot.get_state(config={"configurable": {"thread_id": thread_id}}).values["messages"]
 
 # ****************************** Session Setup ******************************
 if "message_history" not in st.session_state:
@@ -17,6 +22,36 @@ if "message_history" not in st.session_state:
 
 if "thread_id" not in st.session_state:
     st.session_state["thread_id"] = utils.generate_thread_id()
+
+if "chat_threads" not in st.session_state:
+    st.session_state["chat_threads"] = []
+
+add_thread(st.session_state["thread_id"])
+
+# ****************************** Sidebar UI ******************************
+st.sidebar.title("Chatbot")
+
+if st.sidebar.button("New Chat"):
+    reset_chat()
+
+st.sidebar.header("Conversations")
+
+for each_thread_id in st.session_state["chat_threads"][::-1]:
+    if st.sidebar.button(str(each_thread_id)):
+        st.session_state["thread_id"] = each_thread_id
+        messages = load_conversation(each_thread_id)
+
+        temp_messages = []
+
+        for message in messages:
+            if isinstance(message, HumanMessage):
+                role = "user"
+            else:
+                role = "assistant"
+
+            temp_messages.append({"role": role, "content": message.content})
+
+        st.session_state["message_history"] = temp_messages
 
 
 for message in st.session_state["message_history"]:
