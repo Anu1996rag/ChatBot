@@ -1,12 +1,23 @@
 import streamlit as st
 from langchain_core.messages import HumanMessage
 from backend import chatbot
+import utils
+
+# ****************************** Sidebar UI ******************************
+st.sidebar.title("Chatbot")
+
+st.sidebar.button("New Chat")
+
+st.sidebar.header("Conversations")
 
 
-CONFIG = {'configurable': {'thread_id': 'thread-1'}}
-
+# ****************************** Session Setup ******************************
 if "message_history" not in st.session_state:
     st.session_state["message_history"] = []
+
+if "thread_id" not in st.session_state:
+    st.session_state["thread_id"] = utils.generate_thread_id()
+
 
 for message in st.session_state["message_history"]:
     with st.chat_message(message["role"]):
@@ -18,6 +29,7 @@ if user_input:
     with st.chat_message('user'):
         st.text(user_input)
 
+    CONFIG = {'configurable': {'thread_id': st.session_state["thread_id"]}}
     with st.chat_message('assistant'):
         ai_response = st.write_stream(
             message.content for message, metadata in chatbot.stream(
