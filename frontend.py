@@ -1,7 +1,7 @@
 import streamlit as st
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 import utils
-from langgraph_database import chatbot, get_threads
+from llm_backend import chatbot, get_threads
 
 def reset_chat():
     st.session_state["thread_id"] = utils.generate_thread_id()
@@ -64,12 +64,19 @@ if user_input:
         st.text(user_input)
 
     CONFIG = {'configurable': {'thread_id': st.session_state["thread_id"]}}
+
+
     with st.chat_message('assistant'):
-        ai_response = st.write_stream(
-            message.content for message, metadata in chatbot.stream(
-                {"messages": [HumanMessage(content=user_input)]},
-                config=CONFIG,
-                stream_mode="messages"
-            )
-        )
+
+        def only_stream_ai_messages():
+            for message_chunk, metadata in chatbot.stream(
+                    {"messages": [HumanMessage(content=user_input)]},
+                    config=CONFIG,
+                    stream_mode="messages"
+            ):
+                if isinstance(message_chunk, AIMessage):
+                    yield message_chunk.content
+
+        ai_response = st.write_stream(only_stream_ai_messages())
+
     st.session_state["message_history"].append({"role": "assistant", "content": ai_response})
