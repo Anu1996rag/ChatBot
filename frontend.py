@@ -1,5 +1,5 @@
 import streamlit as st
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 import utils
 from llm_backend import chatbot, get_threads
 
@@ -67,6 +67,8 @@ if user_input:
 
 
     with st.chat_message('assistant'):
+        # use mutable holder so that the generator can modify it
+        status_holder = {"box": None}
 
         def only_stream_ai_messages():
             for message_chunk, metadata in chatbot.stream(
@@ -74,9 +76,34 @@ if user_input:
                     config=CONFIG,
                     stream_mode="messages"
             ):
+                # lazily create and update the SAME status Container when any of the tools run
+                if isinstance(message_chunk, ToolMessage):
+                    tool_name = getattr(message_chunk, "name", "tool")
+                    if status_holder["box"] is None:
+                        status_holder["box"] = st.status(
+                            f"Using tool `{tool_name}`...",
+                            expanded=True
+                        )
+                    else:
+                        status_holder["box"].update(
+                            label=f"Using tool `{tool_name}`...",
+                            state="running",
+                            expanded=True
+                        )
+
+                # Stream only AI responses
                 if isinstance(message_chunk, AIMessage):
                     yield message_chunk.content
 
         ai_response = st.write_stream(only_stream_ai_messages())
 
+        # Finalize message when tool is actually used
+        if status_holder["box"] is not None:
+            status_holder["box"].update(
+                label="Tool Finished",
+                state="complete",
+                expanded=False
+            )
+
+    # save all the AI responses
     st.session_state["message_history"].append({"role": "assistant", "content": ai_response})
